@@ -19,6 +19,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -192,15 +193,21 @@ func (vm stackAdoptViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (vm stackAdoptViewModel) initCmd() tea.Msg {
+	logrus.Debug("stack adopt view model init")
 	unmanagedBranches, err := vm.getUnmanagedBranches()
+	logrus.Debug("done getUnmanagedBranches")
 	if err != nil {
 		return err
 	}
+	logrus.Debug("start DetectBranches")
 	pieces, err := treedetector.DetectBranches(vm.repo, unmanagedBranches)
 	if err != nil {
 		return err
 	}
+	logrus.Debug("end DetectBranches")
+	logrus.Debug("start ConvertToStackTree")
 	nodes := treedetector.ConvertToStackTree(vm.db, pieces, plumbing.HEAD, false)
+	logrus.Debug("end ConvertToStackTree")
 	return &stackAdoptTreeInfo{
 		branches:        pieces,
 		rootNodes:       nodes,

@@ -6,6 +6,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/sirupsen/logrus"
 )
 
 const iterStopErr = errors.Sentinel("stop")
@@ -28,7 +29,9 @@ func DetectBranches(
 	repo *avgit.Repo,
 	unmanagedBranches []plumbing.ReferenceName,
 ) (map[plumbing.ReferenceName]*BranchPiece, error) {
+	logrus.Debugf("Detecting branches: %v", len(unmanagedBranches))
 	hashToRefMap, refToHashMap, err := getBranchHashes(repo.GoGitRepo())
+	logrus.Debug("Got branch hashes")
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +39,9 @@ func DetectBranches(
 	ret := map[plumbing.ReferenceName]*BranchPiece{}
 	for _, bn := range unmanagedBranches {
 		currentHash := refToHashMap[bn]
+		logrus.Debugf("Start getNearestTrunkCommit: %s", bn)
 		nearestTrunkCommit, err := getNearestTrunkCommit(repo, bn)
+		logrus.Debugf("Done getNearestTrunkCommit: %s", bn)
 		if err != nil {
 			return nil, err
 		}
@@ -45,7 +50,9 @@ func DetectBranches(
 			// don't have to adopt it.
 			continue
 		}
+		logrus.Debug("Start traversqal")
 		bp, err := traverseUntilTrunk(repo, bn, nearestTrunkCommit, hashToRefMap, refToHashMap)
+		logrus.Debug("End traversqal")
 		if err != nil {
 			return nil, err
 		}
@@ -71,6 +78,7 @@ func traverseUntilTrunk(
 	// Do a commit traversal. We can stop the traversal when we hit the trunk or if we find a
 	// commit that has multiple parents.
 	err = object.NewCommitPreorderIter(commit, nil, nil).ForEach(func(c *object.Commit) error {
+		logrus.Debugf("Traversing commit: %s", c.Hash)
 		if c.Hash == nearestTrunkCommit {
 			trunk, err := repo.DefaultBranch()
 			if err != nil {
